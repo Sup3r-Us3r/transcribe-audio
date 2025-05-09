@@ -1,0 +1,32 @@
+{
+  "name": "transcribe-audio",
+  "version": "1.0.0",
+  "description": "Transcribe audio with Whisper",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node ./dist/server.js",
+    "dev": "tsx watch --env-file=.env ./src/server.ts",
+    "build": "tsc -b"
+  },
+  "keywords": [
+    "transcribe-audio",
+    "ai",
+    "whisper"
+  ],
+  "author": "Mayderson Mello",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.15.14",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@fastify/multipart": "^9.0.3",
+    "bullmq": "^5.52.1",
+    "fastify": "^5.3.2",
+    "ioredis": "^5.6.1",
+    "subtitle": "^4.2.2-alpha.0",
+    "uuid": "^11.1.0",
+    "whisper-node": "^1.1.1"
+  }
+}
