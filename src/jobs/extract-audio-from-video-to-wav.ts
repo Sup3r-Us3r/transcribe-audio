@@ -6,8 +6,21 @@ import { fileExists } from '../utils/file-exists';
 import { generateSubtitlesQueue } from '../queues';
 
 export interface ExtractAudioFromVideoToWavJobData {
-  fileId: string;
-  videoExtension: string;
+  fileData: {
+    localFile: {
+      videoId: string;
+      audioId: string;
+      videoExtension: string;
+    } | null;
+    remoteFile: {
+      videoId: string;
+      videoUrl: string;
+      videoExtension: string;
+      audioId: string;
+      audioUrl: string;
+      audioExtension: string;
+    } | null;
+  };
 }
 
 export async function extractAudioFromVideoToWavJob(
@@ -16,15 +29,24 @@ export async function extractAudioFromVideoToWavJob(
   try {
     startLog(jobData?.id!, 'EXTRACTING AUDIO FROM VIDEO');
 
-    const videoExists = await fileExists(
-      `${BASE_MEDIA_PATH}/${jobData?.data?.fileId}${jobData?.data?.videoExtension}`
-    );
+    const isLocalVideo = Boolean(jobData?.data?.fileData?.localFile);
+    const isRemoteVideo = Boolean(jobData?.data?.fileData?.remoteFile);
+    const localVideoPath = `${BASE_MEDIA_PATH}/${jobData?.data?.fileData?.localFile?.videoId}${jobData?.data?.fileData?.localFile?.videoExtension}`;
+    const remoteVideoUrl = jobData?.data?.fileData?.remoteFile?.videoUrl;
 
-    if (videoExists) {
+    const localVideoExists = jobData?.data?.fileData?.localFile
+      ? await fileExists(localVideoPath)
+      : null;
+
+    if ((isLocalVideo && localVideoExists) || isRemoteVideo) {
+      const outputAudioFile = isLocalVideo
+        ? `${BASE_MEDIA_PATH}/${jobData?.data?.fileData?.localFile?.videoId}.wav`
+        : `${BASE_MEDIA_PATH}/${jobData?.data?.fileData?.remoteFile?.videoId}.wav`;
+
       const ffmpegArgs: string[] = [
         '-y',
         '-i',
-        `${BASE_MEDIA_PATH}/${jobData?.data?.fileId}${jobData?.data?.videoExtension}`,
+        isLocalVideo ? localVideoPath : remoteVideoUrl!,
         '-vn', // Remove video
         '-acodec',
         'pcm_s16le', // PCM Linear signed 16-bit little-endian
@@ -32,7 +54,7 @@ export async function extractAudioFromVideoToWavJob(
         '16000', // 16 kHz
         '-ac',
         '1', // Mono
-        `${BASE_MEDIA_PATH}/${jobData?.data?.fileId}.wav`,
+        outputAudioFile,
       ];
 
       await runFfmpeg(ffmpegArgs);
@@ -40,14 +62,10 @@ export async function extractAudioFromVideoToWavJob(
       endLog(jobData?.id!, 'AUDIO EXTRACTED AND CONVERTED TO .WAV');
 
       await generateSubtitlesQueue.add('process', {
-        fileId: jobData?.data?.fileId,
-        videoExtension: jobData?.data?.videoExtension,
+        fileData: jobData?.data?.fileData,
       });
     } else {
-      errorLog(
-        jobData?.id!,
-        `${jobData?.data?.fileId}.${jobData?.data?.videoExtension} FILE NOT FOUND`
-      );
+      errorLog(jobData?.id!, 'FILE NOT FOUND');
     }
   } catch (error) {
     errorLog(jobData?.id!, error as any);
