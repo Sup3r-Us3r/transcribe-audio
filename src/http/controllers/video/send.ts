@@ -1,12 +1,12 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { pipeline } from 'node:stream/promises';
-import { mkdir } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import { v4 as uuidv4 } from 'uuid';
+import { pipeline } from 'node:stream/promises';
 import z from 'zod';
-import { extractAudioQueue } from '../../../queues';
 import { BASE_MEDIA_PATH } from '../../../constants/base-media-path';
+import { compressVideoAndAddAudioQueue } from '../../../queues';
 
 interface SendVideoFields {
   videoFilePath: string;
@@ -45,7 +45,7 @@ export async function sendVideo(request: FastifyRequest, reply: FastifyReply) {
       return reply.status(400).send({ message: formattedErrors });
     }
 
-    const job = await extractAudioQueue.add('process', {
+    const job = await compressVideoAndAddAudioQueue.add('process', {
       fileData: {
         localFile: null,
         remoteFile: {
@@ -67,8 +67,8 @@ export async function sendVideo(request: FastifyRequest, reply: FastifyReply) {
 
   const fields = {} as SendVideoFields;
 
-  const videoFileId = uuidv4();
-  const audioFileId = uuidv4();
+  const videoFileId = randomUUID();
+  const audioFileId = randomUUID();
 
   for await (const part of parts) {
     if (part?.type === 'file') {
@@ -110,12 +110,13 @@ export async function sendVideo(request: FastifyRequest, reply: FastifyReply) {
       .send({ message: 'videoFile, audioFile and webhookUrl is required.' });
   }
 
-  const job = await extractAudioQueue.add('process', {
+  const job = await compressVideoAndAddAudioQueue.add('process', {
     fileData: {
       localFile: {
         videoId: videoFileId,
         audioId: audioFileId,
         videoExtension: fields.videoExtension,
+        audioExtension: fields.audioExtension,
       },
       remoteFile: null,
     },

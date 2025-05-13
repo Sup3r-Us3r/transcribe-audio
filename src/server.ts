@@ -5,8 +5,16 @@ import { QUEUES } from './constants/queues';
 import { extractAudioFromVideoToWavJob } from './jobs/extract-audio-from-video-to-wav';
 import { generateSubtitlesJob } from './jobs/generate-subtitles';
 import { addSubtitleToVideoJob } from './jobs/add-subtitles-to-video';
+import { CompressVideoAndAddAudioJob } from './jobs/compress-video-and-add-audio';
 
 // Create workers to process video
+new Worker(
+  QUEUES.COMPRESS_VIDEO_AND_ADD_AUDIO_QUEUE,
+  CompressVideoAndAddAudioJob,
+  {
+    connection,
+  }
+);
 new Worker(QUEUES.EXTRACT_AUDIO_QUEUE, extractAudioFromVideoToWavJob, {
   connection,
 });

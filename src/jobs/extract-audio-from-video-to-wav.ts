@@ -1,26 +1,15 @@
 import { Job } from 'bullmq';
-import { runFfmpeg } from '../utils/run-ffmpeg';
-import { endLog, errorLog, startLog } from '../utils/job-log';
+import { randomUUID } from 'node:crypto';
 import { BASE_MEDIA_PATH } from '../constants/base-media-path';
-import { fileExists } from '../utils/file-exists';
+import { JOBS } from '../constants/jobs';
+import { JobContextStore } from '../context/job-context-store';
 import { generateSubtitlesQueue } from '../queues';
+import { fileExists } from '../utils/file-exists';
+import { endLog, errorLog, startLog } from '../utils/job-log';
+import { runFfmpeg } from '../utils/run-ffmpeg';
 
 export interface ExtractAudioFromVideoToWavJobData {
-  fileData: {
-    localFile: {
-      videoId: string;
-      audioId: string;
-      videoExtension: string;
-    } | null;
-    remoteFile: {
-      videoId: string;
-      videoUrl: string;
-      videoExtension: string;
-      audioId: string;
-      audioUrl: string;
-      audioExtension: string;
-    } | null;
-  };
+  videoPath: string;
 }
 
 export async function extractAudioFromVideoToWavJob(
@@ -29,24 +18,15 @@ export async function extractAudioFromVideoToWavJob(
   try {
     startLog(jobData?.id!, 'EXTRACTING AUDIO FROM VIDEO');
 
-    const isLocalVideo = Boolean(jobData?.data?.fileData?.localFile);
-    const isRemoteVideo = Boolean(jobData?.data?.fileData?.remoteFile);
-    const localVideoPath = `${BASE_MEDIA_PATH}/${jobData?.data?.fileData?.localFile?.videoId}${jobData?.data?.fileData?.localFile?.videoExtension}`;
-    const remoteVideoUrl = jobData?.data?.fileData?.remoteFile?.videoUrl;
+    const localVideoExists = await fileExists(jobData?.data?.videoPath);
 
-    const localVideoExists = jobData?.data?.fileData?.localFile
-      ? await fileExists(localVideoPath)
-      : null;
-
-    if ((isLocalVideo && localVideoExists) || isRemoteVideo) {
-      const outputAudioFile = isLocalVideo
-        ? `${BASE_MEDIA_PATH}/${jobData?.data?.fileData?.localFile?.videoId}.wav`
-        : `${BASE_MEDIA_PATH}/${jobData?.data?.fileData?.remoteFile?.videoId}.wav`;
+    if (localVideoExists) {
+      const outputAudioFile = `${BASE_MEDIA_PATH}/${randomUUID()}.wav`;
 
       const ffmpegArgs: string[] = [
         '-y',
         '-i',
-        isLocalVideo ? localVideoPath : remoteVideoUrl!,
+        jobData?.data?.videoPath,
         '-vn', // Remove video
         '-acodec',
         'pcm_s16le', // PCM Linear signed 16-bit little-endian
@@ -61,9 +41,14 @@ export async function extractAudioFromVideoToWavJob(
 
       endLog(jobData?.id!, 'AUDIO EXTRACTED AND CONVERTED TO .WAV');
 
-      await generateSubtitlesQueue.add('process', {
-        fileData: jobData?.data?.fileData,
-      });
+      await Promise.all([
+        generateSubtitlesQueue.add('process', {
+          audioPath: outputAudioFile,
+        }),
+        JobContextStore.set(JOBS.EXTRACT_AUDIO_JOB, {
+          audioPath: outputAudioFile,
+        }),
+      ]);
     } else {
       errorLog(jobData?.id!, 'FILE NOT FOUND');
     }

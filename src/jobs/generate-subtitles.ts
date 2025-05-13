@@ -5,34 +5,23 @@ import {
   transcribe,
 } from '@remotion/install-whisper-cpp';
 import { Job } from 'bullmq';
+import { randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { BASE_MEDIA_PATH } from '../constants/base-media-path';
+import { JOBS } from '../constants/jobs';
 import {
   WHISPER_LANG,
   WHISPER_MODEL,
   WHISPER_PATH,
   WHISPER_VERSION,
 } from '../constants/whisper';
+import { JobContextStore } from '../context/job-context-store';
 import { fileExists } from '../utils/file-exists';
 import { endLog, errorLog, startLog } from '../utils/job-log';
 
 export interface GenerateSubtitlesJobData {
-  fileData: {
-    localFile: {
-      videoId: string;
-      audioId: string;
-      videoExtension: string;
-    } | null;
-    remoteFile: {
-      videoId: string;
-      videoUrl: string;
-      videoExtension: string;
-      audioId: string;
-      audioUrl: string;
-      audioExtension: string;
-    } | null;
-  };
+  audioPath: string;
 }
 
 export async function generateSubtitlesJob(
@@ -44,17 +33,10 @@ export async function generateSubtitlesJob(
     await installWhisperCpp({ to: WHISPER_PATH, version: WHISPER_VERSION });
     await downloadWhisperModel({ folder: WHISPER_PATH, model: WHISPER_MODEL });
 
-    const isLocalAudio = Boolean(jobData?.data?.fileData?.localFile);
-    const isRemoteAudio = Boolean(jobData?.data?.fileData?.remoteFile);
-    const localAudioPath = `${BASE_MEDIA_PATH}/${jobData?.data?.fileData?.localFile?.videoId}.wav`;
-    const remoteAudioPath = `${BASE_MEDIA_PATH}/${jobData?.data?.fileData?.remoteFile?.videoId}.wav`;
+    const audioExists = await fileExists(jobData?.data?.audioPath);
 
-    const audioExists = jobData?.data?.fileData?.localFile
-      ? await fileExists(localAudioPath)
-      : await fileExists(remoteAudioPath);
-
-    if ((isLocalAudio && audioExists) || (isRemoteAudio && audioExists)) {
-      const inputAudioPath = isLocalAudio ? localAudioPath : remoteAudioPath;
+    if (audioExists) {
+      const inputAudioPath = jobData?.data?.audioPath;
 
       const whisperCppOutput = await transcribe({
         inputPath: inputAudioPath,
@@ -68,7 +50,7 @@ export async function generateSubtitlesJob(
         splitOnWord: true,
       });
 
-      const subtitlesPath = inputAudioPath.replace('wav', 'json');
+      const subtitlesPath = `${BASE_MEDIA_PATH}/${randomUUID()}.json`;
       const { captions } = toCaptions({ whisperCppOutput });
       await pipeline(
         JSON.stringify(captions, null, 2),
@@ -76,6 +58,10 @@ export async function generateSubtitlesJob(
       );
 
       endLog(jobData?.id!, 'GENERATED SUBTITLES');
+
+      await JobContextStore.set(JOBS.GENERATE_SUBTITLES_JOB, {
+        subtitlesPath,
+      });
     } else {
       errorLog(jobData?.id!, 'FILE NOT FOUND');
     }

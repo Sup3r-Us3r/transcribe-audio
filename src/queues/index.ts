@@ -4,10 +4,19 @@ import { QUEUES } from '../constants/queues';
 import { ExtractAudioFromVideoToWavJobData } from '../jobs/extract-audio-from-video-to-wav';
 import { GenerateSubtitlesJobData } from '../jobs/generate-subtitles';
 import { AddSubTitleToVideoJobData } from '../jobs/add-subtitles-to-video';
+import { CompressVideoAndAddAudioJobData } from '../jobs/compress-video-and-add-audio';
 
 export const connection = new Redis({
   maxRetriesPerRequest: null,
 });
+
+export const compressVideoAndAddAudioQueue =
+  new Queue<CompressVideoAndAddAudioJobData>(
+    QUEUES.COMPRESS_VIDEO_AND_ADD_AUDIO_QUEUE,
+    {
+      connection,
+    }
+  );
 
 export const extractAudioQueue = new Queue<ExtractAudioFromVideoToWavJobData>(
   QUEUES.EXTRACT_AUDIO_QUEUE,
