@@ -57,13 +57,16 @@ export async function uploadFilesJob(jobData: Job): Promise<void> {
       subtitlesUrl: subtitlesResult?.secure_url,
     };
 
-    const response = await fetch(process.env.WEBHOOK_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(webhookRequest),
-    });
+    const response = await fetch(
+      `${process.env.WEBHOOK_URL}?renderVideo=true`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(webhookRequest),
+      }
+    );
 
     if (!response.ok) {
       errorLog(jobData?.id!, 'UNABLE TO CALL WEBHOOK');
