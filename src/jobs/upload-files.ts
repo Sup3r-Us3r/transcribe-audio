@@ -1,8 +1,9 @@
 import { Job } from 'bullmq';
-import { endLog, errorLog, startLog } from '../utils/job-log';
-import { JobContextStore } from '../context/job-context-store';
+import { UploadApiOptions } from 'cloudinary';
 import { JOBS } from '../constants/jobs';
+import { JobContextStore } from '../context/job-context-store';
 import { cloudinary } from '../lib/cloudinary';
+import { endLog, errorLog, startLog } from '../utils/job-log';
 
 type MediaEntry = {
   filePath: string;
@@ -25,12 +26,21 @@ export async function uploadFilesJob(jobData: Job): Promise<void> {
       JOBS.GENERATE_SUBTITLES_JOB,
     ]);
 
+    const resourceTypes: Record<
+      MediaEntry['extensionFile'],
+      UploadApiOptions['resource_type']
+    > = {
+      mp4: 'video',
+      mov: 'video',
+      json: 'raw',
+    };
+
     const uploads = getAllFilePathsData?.map((media) => {
       return cloudinary.uploader.upload(media?.filePath, {
         folder: 'bot/instagram/videos',
         use_filename: true,
         unique_filename: true,
-        resource_type: 'auto',
+        resource_type: resourceTypes[media?.extensionFile],
       });
     });
 
