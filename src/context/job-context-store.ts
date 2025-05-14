@@ -11,9 +11,7 @@ export class JobContextStore {
     return raw ? JSON.parse(raw) : {};
   }
 
-  public static async getMany(
-    workflowIds: string[]
-  ): Promise<Record<string, any>[]> {
+  public static async getMany<T = any>(workflowIds: string[]): Promise<T[]> {
     const keys = workflowIds.map(this.getKey);
     const values = await redis.mget(...keys);
 
