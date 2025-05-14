@@ -7,7 +7,7 @@ import { endLog, errorLog, startLog } from '../utils/job-log';
 
 type MediaEntry = {
   filePath: string;
-  extensionFile: 'mp4' | 'mov' | 'json';
+  extensionFile: 'mp4' | 'wav' | 'json';
 };
 
 type WebHookRequest = {
@@ -31,7 +31,7 @@ export async function uploadFilesJob(jobData: Job): Promise<void> {
       UploadApiOptions['resource_type']
     > = {
       mp4: 'video',
-      mov: 'video',
+      wav: 'video',
       json: 'raw',
     };
 
