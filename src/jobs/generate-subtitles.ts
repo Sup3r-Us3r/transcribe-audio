@@ -19,6 +19,7 @@ import {
 import { JobContextStore } from '../context/job-context-store';
 import { fileExists } from '../utils/file-exists';
 import { endLog, errorLog, startLog } from '../utils/job-log';
+import { uploadFilesQueue } from '../queues';
 
 export interface GenerateSubtitlesJobData {
   audioPath: string;
@@ -59,9 +60,13 @@ export async function generateSubtitlesJob(
 
       endLog(jobData?.id!, 'GENERATED SUBTITLES');
 
-      await JobContextStore.set(JOBS.GENERATE_SUBTITLES_JOB, {
-        subtitlesPath,
-      });
+      await Promise.all([
+        JobContextStore.set(JOBS.GENERATE_SUBTITLES_JOB, {
+          filePath: subtitlesPath,
+          extensionFile: 'json',
+        }),
+        uploadFilesQueue.add('process', null),
+      ]);
     } else {
       errorLog(jobData?.id!, 'FILE NOT FOUND');
     }

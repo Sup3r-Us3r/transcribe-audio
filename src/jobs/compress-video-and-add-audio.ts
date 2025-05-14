@@ -81,16 +81,17 @@ export async function CompressVideoAndAddAudioJob(
       await runFfmpeg(ffmpegArgs);
 
       if (isLocalFile) {
-        await unlink(localVideoPath);
+        await Promise.all([unlink(localVideoPath), unlink(localAudioPath)]);
       }
 
       endLog(jobData?.id!, 'COMPRESSED VIDEO AND ADDED AUDIO');
 
       await Promise.all([
-        extractAudioQueue.add('process', {
-          videoPath: outputVideoFile,
-        }),
         JobContextStore.set(JOBS.COMPRESS_VIDEO_AND_ADD_AUDIO_JOB, {
+          filePath: outputVideoFile,
+          extensionFile: 'mp4',
+        }),
+        extractAudioQueue.add('process', {
           videoPath: outputVideoFile,
         }),
       ]);

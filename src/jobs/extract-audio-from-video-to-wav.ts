@@ -42,10 +42,11 @@ export async function extractAudioFromVideoToWavJob(
       endLog(jobData?.id!, 'AUDIO EXTRACTED AND CONVERTED TO .WAV');
 
       await Promise.all([
-        generateSubtitlesQueue.add('process', {
-          audioPath: outputAudioFile,
-        }),
         JobContextStore.set(JOBS.EXTRACT_AUDIO_JOB, {
+          filePath: outputAudioFile,
+          extensionFile: 'wav',
+        }),
+        generateSubtitlesQueue.add('process', {
           audioPath: outputAudioFile,
         }),
       ]);

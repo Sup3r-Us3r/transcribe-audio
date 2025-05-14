@@ -38,3 +38,7 @@ export const addSubtitlesQueue = new Queue<AddSubTitleToVideoJobData>(
     connection,
   }
 );
+
+export const uploadFilesQueue = new Queue(QUEUES.UPLOAD_FILES_QUEUE, {
+  connection,
+});
