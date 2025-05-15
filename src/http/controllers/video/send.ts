@@ -13,7 +13,6 @@ interface SendVideoFields {
   videoExtension: string;
   audioFilePath: string;
   audioExtension: string;
-  webhookUrl: string;
 }
 
 export const sendVideoSchema = z.object({
@@ -96,15 +95,9 @@ export async function sendVideo(request: FastifyRequest, reply: FastifyReply) {
         fields.audioExtension = path.extname(part?.filename);
       }
     }
-
-    if (part?.type === 'field') {
-      if (part?.fieldname === 'webhookUrl') {
-        fields.webhookUrl = part.fields?.webhookUrl?.value;
-      }
-    }
   }
 
-  if (!fields.videoFilePath || !fields?.audioFilePath || !fields.webhookUrl) {
+  if (!fields.videoFilePath || !fields?.audioFilePath) {
     return reply
       .code(400)
       .send({ message: 'videoFile, audioFile and webhookUrl is required.' });
