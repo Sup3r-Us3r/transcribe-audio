@@ -13,17 +13,17 @@ export interface CompressVideoAndAddAudioJobData {
   fileData: {
     localFile: {
       videoId: string;
-      audioId: string;
       videoExtension: string;
-      audioExtension: string;
+      audioId?: string;
+      audioExtension?: string;
     } | null;
     remoteFile: {
       videoId: string;
       videoUrl: string;
       videoExtension: string;
-      audioId: string;
-      audioUrl: string;
-      audioExtension: string;
+      audioId?: string;
+      audioUrl?: string;
+      audioExtension?: string;
     } | null;
   };
 }
@@ -36,6 +36,10 @@ export async function CompressVideoAndAddAudioJob(
 
     const isLocalFile = Boolean(jobData?.data?.fileData?.localFile);
     const isRemoteFile = Boolean(jobData?.data?.fileData?.remoteFile);
+    const hasLocalAudio = Boolean(jobData?.data?.fileData?.localFile?.audioId);
+    const hasRemoteAudio = Boolean(
+      jobData?.data?.fileData?.remoteFile?.audioId
+    );
     const localVideoPath = `${BASE_MEDIA_PATH}/${jobData?.data?.fileData?.localFile?.videoId}${jobData?.data?.fileData?.localFile?.videoExtension}`;
     const localAudioPath = `${BASE_MEDIA_PATH}/${jobData?.data?.fileData?.localFile?.audioId}${jobData?.data?.fileData?.localFile?.audioExtension}`;
     const remoteVideoUrl = jobData?.data?.fileData?.remoteFile?.videoUrl;
@@ -48,38 +52,67 @@ export async function CompressVideoAndAddAudioJob(
     if ((isLocalFile && localVideoExists) || isRemoteFile) {
       const outputVideoFile = `${BASE_MEDIA_PATH}/${randomUUID()}.mp4`;
 
-      const ffmpegArgs: string[] = [
-        '-y',
-        '-i',
-        isLocalFile ? localVideoPath : remoteVideoUrl!,
-        '-i',
-        isLocalFile ? localAudioPath : remoteAudioUrl!,
-        '-map',
-        '0:v:0',
-        '-map',
-        '1:a:0',
-        '-filter:v',
-        'crop=1080:1350',
-        '-c:v',
-        'libx264',
-        '-preset',
-        'medium',
-        '-crf',
-        '25',
-        '-c:a',
-        'aac',
-        '-b:a',
-        '128k',
-        '-movflags',
-        '+faststart',
-        // '-shortest',
-        outputVideoFile,
-      ];
+      let ffmpegArgs: string[] = [];
+
+      if (hasLocalAudio || hasRemoteAudio) {
+        ffmpegArgs = [
+          '-y',
+          '-i',
+          isLocalFile ? localVideoPath : remoteVideoUrl!,
+          '-i',
+          isLocalFile ? localAudioPath : remoteAudioUrl!,
+          '-map',
+          '0:v:0',
+          '-map',
+          '1:a:0',
+          '-filter:v',
+          'crop=1080:1350',
+          '-c:v',
+          'libx264',
+          '-preset',
+          'medium',
+          '-crf',
+          '25',
+          '-c:a',
+          'aac',
+          '-b:a',
+          '128k',
+          '-movflags',
+          '+faststart',
+          // '-shortest',
+          outputVideoFile,
+        ];
+      } else {
+        ffmpegArgs = [
+          '-y',
+          '-i',
+          isLocalFile ? localVideoPath : remoteVideoUrl!,
+          '-filter:v',
+          'crop=1080:1350',
+          '-c:v',
+          'libx264',
+          '-preset',
+          'medium',
+          '-crf',
+          '25',
+          '-c:a',
+          'aac',
+          '-b:a',
+          '128k',
+          '-movflags',
+          '+faststart',
+          // '-shortest',
+          outputVideoFile,
+        ];
+      }
 
       await runFfmpeg(ffmpegArgs);
 
       if (isLocalFile) {
-        await Promise.all([unlink(localVideoPath), unlink(localAudioPath)]);
+        await Promise.all([
+          unlink(localVideoPath),
+          hasLocalAudio && unlink(localAudioPath),
+        ]);
       }
 
       endLog(jobData?.id!, 'COMPRESSED VIDEO AND ADDED AUDIO');

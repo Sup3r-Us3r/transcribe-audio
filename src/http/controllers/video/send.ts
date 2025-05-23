@@ -11,17 +11,17 @@ import { compressVideoAndAddAudioQueue } from '../../../queues';
 interface SendVideoFields {
   videoFilePath: string;
   videoExtension: string;
-  audioFilePath: string;
-  audioExtension: string;
+  audioFilePath?: string;
+  audioExtension?: string;
 }
 
 export const sendVideoSchema = z.object({
   videoId: z.string(),
   videoUrl: z.string().url(),
   videoExtension: z.string(),
-  audioId: z.string(),
-  audioUrl: z.string().url(),
-  audioExtension: z.string(),
+  audioId: z.string().optional(),
+  audioUrl: z.string().url().optional(),
+  audioExtension: z.string().optional(),
 });
 
 export type SendVideoRequestBody = z.infer<typeof sendVideoSchema>;
@@ -97,19 +97,19 @@ export async function sendVideo(request: FastifyRequest, reply: FastifyReply) {
     }
   }
 
-  if (!fields.videoFilePath || !fields?.audioFilePath) {
-    return reply
-      .code(400)
-      .send({ message: 'videoFile, audioFile and webhookUrl is required.' });
+  if (!fields.videoFilePath) {
+    return reply.code(400).send({ message: 'videoFile is required.' });
   }
 
   const job = await compressVideoAndAddAudioQueue.add('process', {
     fileData: {
       localFile: {
         videoId: videoFileId,
-        audioId: audioFileId,
+        audioId: fields.audioFilePath ? audioFileId : undefined,
         videoExtension: fields.videoExtension,
-        audioExtension: fields.audioExtension,
+        audioExtension: fields.audioFilePath
+          ? fields.audioExtension
+          : undefined,
       },
       remoteFile: null,
     },
