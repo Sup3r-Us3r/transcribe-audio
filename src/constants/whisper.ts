@@ -5,7 +5,7 @@ import type { WhisperModel, Language } from '@remotion/install-whisper-cpp';
 export const WHISPER_PATH = path.resolve(__dirname, '..', '..', 'whisper.cpp');
 
 // The version of Whisper.cpp to install
-export const WHISPER_VERSION = '1.6.0';
+export const WHISPER_VERSION = '1.7.5';
 
 // Which model to use.
 // | Model            | Disk   | Mem      |
