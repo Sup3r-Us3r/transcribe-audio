@@ -7,6 +7,11 @@ import { AddSubTitleToVideoJobData } from '../jobs/add-subtitles-to-video';
 import { CompressVideoAndAddAudioJobData } from '../jobs/compress-video-and-add-audio';
 
 export const connection = new Redis({
+  host: process.env.REDIS_HOST,
+  username: process.env.REDIS_USER,
+  password: process.env.REDIS_PASSWORD,
+  port: process.env.REDIS_PORT,
+  tls: {},
   maxRetriesPerRequest: null,
 });
 
