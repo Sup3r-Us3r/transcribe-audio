@@ -28,7 +28,7 @@ export interface CompressVideoAndAddAudioJobData {
   };
 }
 
-export async function CompressVideoAndAddAudioJob(
+export async function compressVideoAndAddAudioJob(
   jobData: Job<CompressVideoAndAddAudioJobData>
 ): Promise<void> {
   try {
