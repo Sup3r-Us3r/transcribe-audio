@@ -76,7 +76,7 @@ WEBHOOK_URL=https://n8n.yourdomain.com/webhook/video-workflow
 
 ## 📤 API Usage
 
-### POST `/upload`
+### POST `/video/process`
 
 This endpoint supports both **JSON body** and **multipart/form-data** uploads for video/audio files.
 
@@ -89,13 +89,19 @@ This endpoint supports both **JSON body** and **multipart/form-data** uploads fo
   "videoExtension": ".mp4",
   "audioId": "optional-audio-id",
   "audioUrl": "https://example.com/audio.mp3",
-  "audioExtension": ".mp3"
+  "audioExtension": ".mp3",
+  "videoDimensions": {
+    "width": 1080,
+    "height": 1920
+  }
 }
 ```
 
 ### ✅ Multipart Form Data
 
 - `videoFile`: (File) — required
+- `videoWidth`: (String) - required
+- `videoHeight`: (String) - required
 - `audioFile`: (File) — optional
 
 If both video and audio files are uploaded, the provided audio will replace the original video audio.
@@ -109,7 +115,7 @@ The backend executes a sequence of jobs to handle the entire video transcription
 ### 1. `compress-video-and-add-audio`
 
 - Compress the video to reduce file size
-- Crop the video to Instagram post format (1080x1350)
+- Crop the video to Instagram reels format (1080x1920)
 - Replace original audio with the uploaded one (if provided)
 - Uses `FFmpeg` for all operations
 
@@ -126,7 +132,8 @@ The backend executes a sequence of jobs to handle the entire video transcription
 
 ### 4. `upload-files`
 
-- Uploads the compressed video, extracted audio, and subtitle JSON to Cloudinary
+- Uploads the compressed video and subtitle JSON to Cloudinary
+- Remove local files after upload
 - Triggers an N8N webhook to render the final video with subtitles using **Remotion**
 
 ---
@@ -136,7 +143,6 @@ The backend executes a sequence of jobs to handle the entire video transcription
 After processing, the following files are available on Cloudinary:
 
 - Compressed video (Instagram format)
-- Extracted audio (`.wav`)
 - Subtitle JSON file
 
 ---
