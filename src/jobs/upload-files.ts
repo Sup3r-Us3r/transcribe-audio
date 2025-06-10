@@ -1,5 +1,6 @@
 import { Job } from 'bullmq';
 import { UploadApiOptions } from 'cloudinary';
+import { unlink } from 'node:fs/promises';
 import { JOBS } from '../constants/jobs';
 import { JobContextStore } from '../context/job-context-store';
 import { cloudinary } from '../lib/cloudinary';
@@ -12,7 +13,6 @@ type MediaEntry = {
 
 type WebHookRequest = {
   videoUrl: string;
-  audioUrl: string;
   subtitlesUrl: string;
 };
 
@@ -35,35 +35,48 @@ export async function uploadFilesJob(jobData: Job): Promise<void> {
       json: 'raw',
     };
 
-    const uploads = getAllFilePathsData?.map((media) => {
-      return cloudinary.uploader.upload(media?.filePath, {
-        folder: 'bot/instagram/videos',
-        use_filename: true,
-        unique_filename: true,
-        resource_type: resourceTypes[media?.extensionFile],
+    const uploads = getAllFilePathsData
+      ?.filter((media) => media.extensionFile !== 'wav')
+      ?.map((media) => {
+        return cloudinary.uploader.upload(media?.filePath, {
+          folder: 'bot/instagram/videos',
+          use_filename: true,
+          unique_filename: true,
+          resource_type: resourceTypes[media?.extensionFile],
+        });
       });
-    });
 
     const uploadResults = await Promise.all(uploads);
 
     const videoResult = uploadResults?.find(
       (upload) => upload.format === 'mp4'
     );
-    const audioResult = uploadResults?.find(
-      (upload) => upload.format === 'wav'
-    );
     const subtitlesResult = uploadResults?.find(
       (upload) => upload.resource_type === 'raw'
     );
-    if (!videoResult || !audioResult || !subtitlesResult) {
+
+    if (!videoResult || !subtitlesResult) {
       errorLog(jobData?.id!, 'UNABLE TO GET DATA FROM FILE');
 
       return;
     }
 
+    endLog(jobData?.id!, 'FILES SENT SUCCESSFULLY');
+
+    for (const media of getAllFilePathsData) {
+      try {
+        await unlink(media?.filePath);
+        endLog(jobData?.id!, 'FILES REMOVED SUCCESSFULLY');
+      } catch (unlinkError) {
+        errorLog(
+          jobData?.id!,
+          `UNABLE TO DELETE FILE ${media?.filePath}: ${unlinkError}`
+        );
+      }
+    }
+
     const webhookRequest: WebHookRequest = {
       videoUrl: videoResult?.secure_url,
-      audioUrl: audioResult?.secure_url,
       subtitlesUrl: subtitlesResult?.secure_url,
     };
 
@@ -84,9 +97,8 @@ export async function uploadFilesJob(jobData: Job): Promise<void> {
       return;
     }
 
-    endLog(jobData?.id!, 'FILES SENT SUCCESSFULLY');
     endLog(jobData?.id!, 'WEBHOOK CALLED SUCCESSFULLY');
   } catch (error) {
-    errorLog(jobData?.id!, error as any);
+    errorLog(jobData?.id!, JSON.stringify(error, null, 2));
   }
 }
