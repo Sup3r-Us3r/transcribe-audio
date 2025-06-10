@@ -11,6 +11,10 @@ import { compressVideoAndAddAudioQueue } from '../../../queues';
 interface SendVideoFields {
   videoFilePath: string;
   videoExtension: string;
+  videoDimensions: {
+    width: number;
+    height: number;
+  };
   audioFilePath?: string;
   audioExtension?: string;
 }
@@ -19,6 +23,10 @@ export const sendVideoSchema = z.object({
   videoId: z.string(),
   videoUrl: z.string().url(),
   videoExtension: z.string(),
+  videoDimensions: z.object({
+    width: z.number().positive(),
+    height: z.number().positive(),
+  }),
   audioId: z.string().optional(),
   audioUrl: z.string().url().optional(),
   audioExtension: z.string().optional(),
@@ -55,6 +63,10 @@ export async function sendVideo(request: FastifyRequest, reply: FastifyReply) {
           audioUrl: bodyParsed?.data?.audioUrl,
           audioExtension: bodyParsed?.data?.audioExtension,
         },
+        videoDimensions: {
+          width: bodyParsed?.data?.videoDimensions?.width,
+          height: bodyParsed?.data?.videoDimensions?.height,
+        },
       },
     });
 
@@ -64,7 +76,16 @@ export async function sendVideo(request: FastifyRequest, reply: FastifyReply) {
     });
   }
 
-  const fields = {} as SendVideoFields;
+  const fields = {
+    videoFilePath: '',
+    videoExtension: '',
+    videoDimensions: {
+      width: 0,
+      height: 0,
+    },
+    audioFilePath: undefined,
+    audioExtension: undefined,
+  } as SendVideoFields;
 
   const videoFileId = randomUUID();
   const audioFileId = randomUUID();
@@ -95,10 +116,26 @@ export async function sendVideo(request: FastifyRequest, reply: FastifyReply) {
         fields.audioExtension = path.extname(part?.filename);
       }
     }
+
+    if (part?.type === 'field') {
+      if (part?.fieldname === 'videoWidth') {
+        fields.videoDimensions.width = Number(part?.value);
+      }
+
+      if (part?.fieldname === 'videoHeight') {
+        fields.videoDimensions.height = Number(part?.value);
+      }
+    }
   }
 
-  if (!fields.videoFilePath) {
-    return reply.code(400).send({ message: 'videoFile is required.' });
+  if (
+    !fields.videoFilePath ||
+    fields.videoDimensions.width === 0 ||
+    fields.videoDimensions.height === 0
+  ) {
+    return reply
+      .code(400)
+      .send({ message: 'videoFile, videoWidth and videoHeight is required.' });
   }
 
   const job = await compressVideoAndAddAudioQueue.add('process', {
@@ -112,6 +149,10 @@ export async function sendVideo(request: FastifyRequest, reply: FastifyReply) {
           : undefined,
       },
       remoteFile: null,
+      videoDimensions: {
+        width: fields.videoDimensions.width,
+        height: fields.videoDimensions.height,
+      },
     },
   });
 

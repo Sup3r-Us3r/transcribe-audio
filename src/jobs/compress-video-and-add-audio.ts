@@ -25,6 +25,10 @@ export interface CompressVideoAndAddAudioJobData {
       audioUrl?: string;
       audioExtension?: string;
     } | null;
+    videoDimensions: {
+      width: number;
+      height: number;
+    };
   };
 }
 
@@ -66,7 +70,7 @@ export async function compressVideoAndAddAudioJob(
           '-map',
           '1:a:0',
           '-filter:v',
-          'crop=1080:1350',
+          `crop=${jobData?.data?.fileData?.videoDimensions?.width}:${jobData?.data?.fileData?.videoDimensions?.height}`,
           '-c:v',
           'libx264',
           '-preset',
@@ -88,7 +92,7 @@ export async function compressVideoAndAddAudioJob(
           '-i',
           isLocalFile ? localVideoPath : remoteVideoUrl!,
           '-filter:v',
-          'crop=1080:1350',
+          `crop=${jobData?.data?.fileData?.videoDimensions?.width}:${jobData?.data?.fileData?.videoDimensions?.height}`,
           '-c:v',
           'libx264',
           '-preset',
