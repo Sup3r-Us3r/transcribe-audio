@@ -6,6 +6,7 @@ import { extractAudioFromVideoToWavJob } from './jobs/extract-audio-from-video-t
 import { generateSubtitlesJob } from './jobs/generate-subtitles';
 import { uploadFilesJob } from './jobs/upload-files';
 import { connection } from './queues';
+import { cleanupQueuesAndContext } from './utils/cleanup-queues';
 
 // Create workers to process video
 new Worker(
@@ -24,6 +25,8 @@ new Worker(QUEUES.GENERATE_SUBTITLES_QUEUE, generateSubtitlesJob, {
 new Worker(QUEUES.UPLOAD_FILES_QUEUE, uploadFilesJob, {
   connection,
 });
+
+cleanupQueuesAndContext();
 
 app.listen({ port: 3333 }, (error) => {
   if (error) {
